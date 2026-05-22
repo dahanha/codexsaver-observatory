@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>番茄钟</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  user-select: none;
+}
+
+#app {
+  width: 360px;
+  padding: 32px 28px 28px;
+  background: #16213e;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+
+#app-header {
+  font-size: 18px;
+  font-weight: 600;
+  color: #a0a0b0;
+  letter-spacing: 4px;
+  margin-bottom: 16px;
+}
+
+/* Mode indicator */
+#mode-badge {
+  padding: 4px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  transition: all 0.3s;
+  margin-bottom: 20px;
+}
+
+.mode-focus     { background: rgba(231,76,60,0.18);  color: #e74c3c; }
+.mode-shortBreak { background: rgba(46,204,113,0.18); color: #2ecc71; }
+.mode-longBreak  { background: rgba(52,152,219,0.18); color: #3498db; }
+
+/* Timer */
+#timer-wrap {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  margin-bottom: 24px;
+}
+
+#timer-wrap svg {
+  width: 220px;
+  height: 220px;
+  transform: rotate(-90deg);
+}
+
+#ring-bg {
+  fill: none;
+  stroke: #2a2a4a;
+  stroke-width: 7;
+}
+
+#ring-fg {
+  fill: none;
+  stroke: #e74c3c;
+  stroke-width: 7;
+  stroke-linecap: round;
+  transition: stroke 0.3s;
+}
+
+#time-display {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 46px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 4px;
+  color: #eee;
+}
+
+/* Buttons */
+#btn-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.btn {
+  width: 78px;
+  height: 38px;
+  border: none;
+  border-radius: 19px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btn-start  { background: #e74c3c; color: #fff; }
+.btn-start:hover:not(:disabled)  { background: #c0392b; }
+
+.btn-pause  { background: #f39c12; color: #fff; }
+.btn-pause:hover:not(:disabled)  { background: #d68910; }
+
+.btn-reset  { background: #34495e; color: #ccc; }
+.btn-reset:hover  { background: #2c3e50; }
+
+/* Mode tabs */
+#mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.tab {
+  padding: 6px 16px;
+  border: 1px solid #444;
+  border-radius: 14px;
+  background: transparent;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab:hover { border-color: #666; color: #ccc; }
+.tab.sel  { border-color: #e74c3c; color: #e74c3c; background: rgba(231,76,60,0.1); }
+
+/* Counter */
+#counter {
+  font-size: 13px;
+  color: #666;
+}
+
+#counter em {
+  color: #e74c3c;
+  font-weight: 700;
+  font-size: 16px;
+  font-style: normal;
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="app-header">番茄钟</div>
+
+  <div id="mode-badge" class="mode-focus">专注</div>
+
+  <div id="timer-wrap">
+    <svg viewBox="0 0 220 220">
+      <circle id="ring-bg" cx="110" cy="110" r="100"/>
+      <circle id="ring-fg" cx="110" cy="110" r="100"/>
+    </svg>
+    <div id="time-display">25:00</div>
+  </div>
+
+  <div id="btn-row">
+    <button class="btn btn-start" id="btnStart">开始</button>
+    <button class="btn btn-pause" id="btnPause" disabled>暂停</button>
+    <button class="btn btn-reset" id="btnReset">重置</button>
+  </div>
+
+  <div id="mode-tabs">
+    <button class="tab sel" data-m="focus">专注</button>
+    <button class="tab" data-m="shortBreak">短休</button>
+    <button class="tab" data-m="longBreak">长休</button>
+  </div>
+
+  <div id="counter">已完成 <em id="cnt">0</em> 个番茄</div>
+</div>
+
+<script>
+const CIRC = 2 * Math.PI * 100; // r=100
+const DUR  = { focus: 25*60, shortBreak: 5*60, longBreak: 15*60 };
+const LBL  = { focus: '专注', shortBreak: '短休', longBreak: '长休' };
+const CLS  = { focus: 'mode-focus', shortBreak: 'mode-shortBreak', longBreak: 'mode-longBreak' };
+const COL  = { focus: '#e74c3c', shortBreak: '#2ecc71', longBreak: '#3498db' };
+
+let mode = 'focus', left = DUR.focus, total = DUR.focus;
+let running = false, timer = null, count = 0;
+
+const elTime   = document.getElementById('time-display');
+const elRing   = document.getElementById('ring-fg');
+const elBadge  = document.getElementById('mode-badge');
+const elCnt    = document.getElementById('cnt');
+const elStart  = document.getElementById('btnStart');
+const elPause  = document.getElementById('btnPause');
+const elReset  = document.getElementById('btnReset');
+const tabs     = document.querySelectorAll('.tab');
+
+function fmt(s) {
+  const m = String(Math.floor(s / 60)).padStart(2, '0');
+  const sec = String(s % 60).padStart(2, '0');
+  return m + ':' + sec;
+}
+
+function draw() {
+  elTime.textContent = fmt(left);
+  elRing.style.strokeDasharray = CIRC;
+  elRing.style.strokeDashoffset = CIRC * (1 - left / total);
+}
+
+function setUI() {
+  elBadge.className = CLS[mode];
+  elBadge.textContent = LBL[mode];
+  elRing.style.stroke = COL[mode];
+  tabs.forEach(t => t.classList.toggle('sel', t.dataset.m === mode));
+}
+
+function stop() {
+  if (timer) { clearInterval(timer); timer = null; }
+  running = false;
+  elStart.disabled = false;
+  elPause.disabled = true;
+}
+
+function beep() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  [0, 0.2, 0.4].forEach((d, i) => {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = i === 2 ? 1000 : 800;
+    o.type = 'sine';
+    g.gain.setValueAtTime(0.3, ctx.currentTime + d);
+    g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + d + 0.18);
+    o.start(ctx.currentTime + d);
+    o.stop(ctx.currentTime + d + 0.18);
+  });
+  setTimeout(() => ctx.close(), 1200);
+}
+
+function notify(title, body) {
+  if (Notification.permission === 'granted') {
+    new Notification(title, { body });
+  }
+}
+
+function tick() {
+  if (left <= 0) {
+    stop();
+    onEnd();
+    return;
+  }
+  left--;
+  draw();
+}
+
+function onEnd() {
+  beep();
+  notify(LBL[mode] + ' 结束！', mode === 'focus' ? '已完成 ' + count + ' 个番茄，休息一下吧' : '准备开始下一个番茄');
+
+  if (mode === 'focus') {
+    count++;
+    elCnt.textContent = count;
+    mode = count % 4 === 0 ? 'longBreak' : 'shortBreak';
+  } else {
+    mode = 'focus';
+  }
+  left = DUR[mode];
+  total = DUR[mode];
+  setUI();
+  draw();
+}
+
+// Button events
+elStart.onclick = () => {
+  if (running) return;
+  running = true;
+  elStart.disabled = true;
+  elPause.disabled = false;
+  timer = setInterval(tick, 1000);
+};
+
+elPause.onclick = stop;
+elReset.onclick = () => { stop(); left = DUR[mode]; total = DUR[mode]; draw(); };
+
+// Mode tabs
+tabs.forEach(t => {
+  t.onclick = () => {
+    stop();
+    mode = t.dataset.m;
+    left = DUR[mode];
+    total = DUR[mode];
+    setUI();
+    draw();
+  };
+});
+
+// Request notification permission on first click
+document.addEventListener('click', () => {
+  if (Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}, { once: true });
+
+// Init
+elRing.style.strokeDasharray = CIRC;
+elRing.style.strokeDashoffset = 0;
+setUI();
+draw();
+</script>
+</body>
+</html>

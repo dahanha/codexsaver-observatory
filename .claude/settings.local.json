@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(New-Item *)",
+      "PowerShell(npm install *)",
+      "PowerShell(npm start *)",
+      "PowerShell(Join-Path *)",
+      "PowerShell(node \"D:\\\\cloudcode\\\\node_modules\\\\electron\\\\install.js\")",
+      "PowerShell($env:ELECTRON_MIRROR=\"https://npmmirror.com/mirrors/electron/\"; node -e \"require\\('child_process'\\).execSync\\('node install.js', {cwd: 'D:/cloudcode/node_modules/electron', stdio: 'inherit', env: {...process.env, ELECTRON_MIRROR: 'https://npmmirror.com/mirrors/electron/'}}\\)\" 2>&1)"
+    ]
+  }
+}
