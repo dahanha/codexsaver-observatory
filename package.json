@@ -1,9 +1,0 @@
-{
-  "name": "pomodoro-timer",
-  "version": "1.0.0",
-  "description": "桌面番茄钟计时器",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  }
-}
