@@ -159,7 +159,8 @@
       $('deepseekState').className='setting-state '+(enabled?'on':'off');
       $('settingsStatus').textContent=settings.api_key_configured?(enabled?'DeepSeek 已启用':'DeepSeek 已停用'):'未配置 API Key';
       $('settingsStatus').className='chip '+(enabled&&settings.api_key_configured?'success':'');
-      $('settingsHint').textContent=settings.api_key_configured?`当前 Key：${settings.api_key_preview} · 配置文件：${settings.config_path}`:'尚未配置 API Key；停用时所有任务直接交给 Codex。';
+      const runtimeReady=settings.engine_installed&&settings.mcp_configured;
+      $('settingsHint').textContent=runtimeReady?(settings.api_key_configured?`引擎与 MCP 已就绪 · 当前 Key：${settings.api_key_preview} · 配置文件：${settings.config_path}`:'引擎与 MCP 已就绪；尚未配置 API Key。'):'CodexSaver 引擎或 MCP 尚未安装，请先运行 install.ps1 并重启 Codex。';
     }
     async function loadSettings(){
       try{ const r=await fetch('/api/settings',{cache:'no-store'}); if(!r.ok) throw new Error(); settings=await r.json(); renderSettings(); }

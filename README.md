@@ -1,60 +1,85 @@
 # CodexSaver Observatory
 
-Local dashboard for seeing when Codex routes work to DeepSeek, why the route was chosen, and whether the worker result passed verification.
+CodexSaver Observatory 是一个完整的 Codex + DeepSeek 任务路由项目，仓库同时包含：
 
-## Start
+- `codexsaver-engine/`：CodexSaver Python 引擎与 MCP 服务；
+- `index.html` / `server.py`：本地可视化仪表盘；
+- 中文任务分类、简单重复任务委派、Codex 主动批准委派；
+- DeepSeek 启用/停用、API Key 配置和连接测试；
+- 脱敏路由事件记录与调用理由展示。
+
+## Windows 安装
+
+要求 Python 3.10 或更高版本。
+
+```powershell
+git clone https://github.com/dahanha/codexsaver-observatory.git
+cd codexsaver-observatory
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+安装脚本会：
+
+1. 以 editable 模式安装仓库内的 `codexsaver-engine`；
+2. 在 `%USERPROFILE%\.codex\config.toml` 注册全局 `codexsaver` MCP；
+3. 写入稳定的 MCP 启动器并运行安装检查。
+
+安装完成后重启 Codex。新的 Codex 会话中应能看到 `codexsaver.*` 工具。
+
+## 启动仪表盘
+
+```powershell
+.\start.ps1
+```
+
+也可以手动启动：
 
 ```powershell
 py -3 server.py
 ```
 
-Open `http://127.0.0.1:8765`.
+打开 `http://127.0.0.1:8765`。在 **DeepSeek 设置** 中填写 API Key、开启自动委派并点击 **测试连接**。
 
-## DeepSeek settings
+## 路由规则
 
-The **DeepSeek 设置** panel can:
+DeepSeek 适合处理范围明确、可验证、低风险的工作，例如：
 
-- save or replace the local DeepSeek API Key;
-- enable or disable automatic DeepSeek delegation;
-- make a small live request to test the API connection.
+- 搜索、扫描、解释和总结；
+- 单元测试、文档、格式化和样板代码；
+- 最多 20 个文件的简单重复或批量修改；
+- Codex 明确判断可以委派的低/中风险任务。
 
-Settings are saved only to `%USERPROFILE%\.codexsaver\config.json`. The API Key is never stored in browser storage, dashboard events, or this Git repository. When DeepSeek is disabled, eligible tasks are returned to Codex without an external model call.
+认证、安全、支付、权限、数据库迁移、生产部署、模糊架构决策和其他高风险工作保留给 Codex。每次调用 DeepSeek 都会记录并展示调用原因，Codex 保留最终审核权。
 
-The server reads routing events from:
+## 本地数据
+
+配置文件：
+
+```text
+%USERPROFILE%\.codexsaver\config.json
+```
+
+路由事件：
 
 ```text
 %USERPROFILE%\.codexsaver\events.jsonl
 ```
 
-Override the location when needed:
+API Key、文件内容和完整任务指令不会写入 Git 或路由事件。API Key 只会在测试连接或真实委派时发送到配置的 DeepSeek API 地址。
+
+## 验证安装
 
 ```powershell
-$env:CODEXSAVER_EVENTS_FILE = "C:\path\to\events.jsonl"
-py -3 server.py
+codexsaver doctor --workspace .
+codexsaver "为工具函数添加单元测试" --dry-run
 ```
 
-The dashboard starts with a small built-in sample so the layout is useful before the first live event. It also supports importing JSON or JSONL files from the browser.
+如果当前终端还找不到 `codexsaver` 命令，可以直接运行：
 
-## CodexSaver integration
-
-The installed CodexSaver engine writes one redacted event per routing result. It records route, provider, task type, risk, status, reason, verification detail, and estimated savings. It never records API keys, file contents, or the full instruction.
-
-The reference helper is in [`integrations/codexsaver_observability.py`](integrations/codexsaver_observability.py). The active editable CodexSaver install uses the same helper at `codexsaver/observability.py`.
-
-If CodexSaver is upgraded or reinstalled, reapply that small observability integration before expecting new live events.
-
-## Data model
-
-Each JSONL line looks like this:
-
-```json
-{"event_id":"...","timestamp":"2026-08-17T10:20:00+08:00","route":"deepseek","provider":"deepseek","task_type":"write_tests","risk":"low","status":"success","reason":"...","detail":"...","estimated_savings_percent":45}
+```powershell
+py -3 .\codexsaver-engine\cli.py doctor --workspace .
 ```
 
-## Safety
+## 来源
 
-This project is local-only by default. The dashboard reads the local CodexSaver settings only to display masked status and perform settings actions initiated in the UI. The API Key is sent only to the configured DeepSeek endpoint when **测试连接** is clicked or when CodexSaver delegates a task. Review event contents before importing or publishing them.
-
-## Another computer
-
-Clone this repository, install CodexSaver on that computer, start `server.py`, and enter that computer's DeepSeek API Key in the dashboard. Keys are intentionally not transferred through GitHub.
+内置引擎基于 [fendouai/CodexSaver](https://github.com/fendouai/CodexSaver) `0.3.6`，本仓库增加了中文分类、重复任务规则、DeepSeek 开关、明确调用理由和 Observatory 事件记录。

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import stat
@@ -50,6 +51,8 @@ def current_settings() -> dict:
     if not isinstance(provider, dict):
         provider = {}
     key = provider.get("api_key") or config.get("deepseek_api_key")
+    codex_config = Path.home() / ".codex" / "config.toml"
+    codex_config_text = codex_config.read_text(encoding="utf-8", errors="replace") if codex_config.exists() else ""
     return {
         "deepseek_enabled": bool(config.get("deepseek_enabled", True)),
         "api_key_configured": bool(key),
@@ -57,6 +60,8 @@ def current_settings() -> dict:
         "model": provider.get("model") or "deepseek-chat",
         "base_url": provider.get("base_url") or DEFAULT_DEEPSEEK_URL,
         "config_path": str(config_path()),
+        "engine_installed": importlib.util.find_spec("codexsaver") is not None,
+        "mcp_configured": "[mcp_servers.codexsaver]" in codex_config_text,
     }
 
 
