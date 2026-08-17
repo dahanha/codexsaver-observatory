@@ -25,6 +25,9 @@ codexsaver_profile: "basic"
 - docstrings, JSDoc, README updates
 - code explanation and repository scanning
 - formatting and boilerplate
+- read-only code review drafts and patch analysis
+- localized bug fixes with explicit reproduction or acceptance checks
+- structured data conversion, field mapping, translation, and localization
 - simple repetitive edits, bulk replacements, renames, normalization, and other mechanical changes with explicit file scope
 - small bounded refactors with explicit file scope and no architectural decision
 - database read-only inspection and dry-run validation planning
@@ -33,12 +36,12 @@ codexsaver_profile: "basic"
 
 Use DeepSeek only when all of these are true:
 
-- the task is low risk and does not touch protected domains;
-- the work is simple, repetitive, read-only, or narrowly bounded;
+- the task is low/medium risk and does not modify protected domains;
+- the work is repetitive, read-only, locally fixable, data-oriented, or bounded by explicit files and checks;
 - the allowed files and acceptance checks are clear;
 - Codex can review the result and keep final judgment.
 
-For more than five files, automatic delegation is limited to explicitly repetitive work with at most twenty files. Larger or ambiguous changes stay in Codex.
+Normal bounded tasks may include up to twenty context files. Explicitly repetitive work may include up to forty files. Bounded work packets may use up to four repair iterations and 600 changed lines by default. Larger or ambiguous changes stay in Codex unless split into smaller packets.
 
 ## Do Not Route To CodexSaver By Default
 

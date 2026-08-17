@@ -31,7 +31,13 @@ REPETITIVE_TASK_KEYWORDS = [
 
 DELEGATABLE: set[TaskType] = {
     "code_search", "explain", "write_tests", "fix_lint", "docs", "boilerplate",
-    "simple_refactor",
+    "simple_refactor", "local_fix", "data_transform", "review_draft",
+}
+
+MAX_AUTOMATIC_FILES = 40
+MEDIUM_FILE_THRESHOLD = 12
+PROTECTED_READONLY_TASKS: set[TaskType] = {
+    "code_search", "explain", "write_tests", "docs", "review_draft",
 }
 
 
@@ -69,6 +75,17 @@ class Router:
         ]):
             return "fix_lint"
         if self._has(text, [
+            "fix bug", "bugfix", "repair bug", "resolve issue", "patch bug",
+            "\u4fee\u590d bug", "\u4fee\u590d\u95ee\u9898", "\u4fee\u590d\u9519\u8bef", "\u5c40\u90e8\u4fee\u590d", "\u6392\u67e5\u5e76\u4fee\u590d",
+        ]):
+            return "local_fix"
+        if self._has(text, [
+            "translate", "localize", "convert json", "convert csv", "transform data",
+            "map fields", "extract fields", "\u7ffb\u8bd1", "\u672c\u5730\u5316", "\u8f6c\u6362 json", "\u8f6c\u6362 csv",
+            "\u6570\u636e\u8f6c\u6362", "\u5b57\u6bb5\u6620\u5c04", "\u63d0\u53d6\u5b57\u6bb5",
+        ]):
+            return "data_transform"
+        if self._has(text, [
             "readme", "docs", "documentation", "comment", "docstring",
             "\u6587\u6863", "\u8bf4\u660e\u6587\u6863", "\u6ce8\u91ca", "\u6587\u6863\u5b57\u7b26\u4e32",
         ]):
@@ -99,11 +116,11 @@ class Router:
         if high_instruction_hits:
             return "high", high_instruction_hits
         if protected_hits:
-            if self.classify(instruction) in {"write_tests", "docs", "explain", "code_search"}:
+            if self.classify(instruction) in PROTECTED_READONLY_TASKS:
                 return "medium", protected_hits
             return "high", protected_hits
-        if len(files) > 5:
-            if self._has(text, REPETITIVE_TASK_KEYWORDS) and len(files) <= 20:
+        if len(files) > MEDIUM_FILE_THRESHOLD:
+            if self._has(text, REPETITIVE_TASK_KEYWORDS) and len(files) <= MAX_AUTOMATIC_FILES:
                 return "low", []
             return "medium", []
         return "low", []
@@ -111,6 +128,10 @@ class Router:
     def decide(self, instruction: str, files: List[str]) -> RouteDecision:
         task_type = self.classify(instruction)
         risk, protected_hits = self.risk(instruction, files)
+        if len(files) > MAX_AUTOMATIC_FILES:
+            return RouteDecision(route="codex", task_type=task_type, risk="medium",
+                reason=f"Task exceeds the automatic delegation limit of {MAX_AUTOMATIC_FILES} files.",
+                protected_hits=protected_hits)
         if risk == "high":
             return RouteDecision(route="codex", task_type=task_type, risk=risk,
                 reason="High-risk task or protected domain detected.", protected_hits=protected_hits)
@@ -120,12 +141,14 @@ class Router:
         if task_type not in DELEGATABLE:
             return RouteDecision(route="codex", task_type=task_type, risk=risk,
                 reason=f"Task type '{task_type}' is not delegatable.", protected_hits=protected_hits)
-        if risk == "medium" and task_type not in {"write_tests", "docs", "explain", "code_search"}:
+        if risk == "medium" and protected_hits and task_type not in PROTECTED_READONLY_TASKS:
             return RouteDecision(route="codex", task_type=task_type, risk=risk,
-                reason="Medium-risk code modification.", protected_hits=protected_hits)
+                reason="Protected-domain modification requires Codex.", protected_hits=protected_hits)
         reason = "Task is low/acceptable risk."
         if self._has(instruction.lower(), REPETITIVE_TASK_KEYWORDS):
             reason = "Task is simple/repetitive, bounded, and low risk."
+        elif risk == "medium":
+            reason = "Task is medium risk but bounded, non-protected, and verifiable by Codex."
         return RouteDecision(route="deepseek", task_type=task_type, risk=risk,
             reason=reason, protected_hits=protected_hits)
 

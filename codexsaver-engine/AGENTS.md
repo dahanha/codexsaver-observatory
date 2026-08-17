@@ -13,6 +13,10 @@ Use CodexSaver when it can reduce cost safely.
 - documentation updates
 - boilerplate generation
 - small, localized refactors
+- read-only code review drafts
+- localized bug fixes with explicit checks
+- structured data transformations and localization
+- repetitive mechanical changes across up to 40 files
 
 ## Do not delegate
 
@@ -26,8 +30,8 @@ Use CodexSaver when it can reduce cost safely.
 
 ## Workflow
 
-1. Decide whether the task is low risk.
-2. If low risk, call `codexsaver.delegate_task`.
+1. Decide whether the task is low/medium risk, bounded, and outside protected domains.
+2. If bounded and verifiable, call `codexsaver.delegate_task` or `codexsaver.delegate_work_packet`.
 3. Review the returned patch and risk notes.
 4. Apply changes only if safe.
 5. Run or recommend `commands_to_run`.

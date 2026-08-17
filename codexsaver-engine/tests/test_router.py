@@ -28,6 +28,11 @@ class TestRouter:
         assert self.router.classify("eslint fix") == "fix_lint"
         assert self.router.classify("mypy type check") == "fix_lint"
 
+    def test_classify_expanded_tasks(self):
+        assert self.router.classify("fix bug in the local cache helper") == "local_fix"
+        assert self.router.classify("transform data and map fields") == "data_transform"
+        assert self.router.classify("review this patch") == "review_draft"
+
     def test_classify_docs(self):
         assert self.router.classify("update readme") == "docs"
         assert self.router.classify("write documentation") == "docs"
@@ -72,7 +77,8 @@ class TestRouter:
         assert "auth" in hits
 
     def test_risk_medium_file_count(self):
-        risk, _ = self.router.risk("add unit tests", ["a.go", "b.go", "c.go", "d.go", "e.go", "f.go"])
+        files = [f"src/file_{index}.py" for index in range(13)]
+        risk, _ = self.router.risk("add unit tests", files)
         assert risk == "medium"
 
     def test_decide_delegate_low_risk(self):
@@ -104,12 +110,24 @@ class TestRouter:
         result = self.router.decide("refactor user service", ["src/user/service.py"])
         assert result.route == "deepseek"
 
-    def test_decide_delegate_repetitive_batch_up_to_twenty_files(self):
-        files = [f"src/file_{index}.py" for index in range(20)]
+    def test_decide_delegate_repetitive_batch_up_to_forty_files(self):
+        files = [f"src/file_{index}.py" for index in range(40)]
         result = self.router.decide("按相同规则批量修改这些重复文件", files)
         assert result.route == "deepseek"
         assert result.risk == "low"
         assert "repetitive" in result.reason
+
+    def test_decide_delegate_medium_non_protected_fix(self):
+        files = [f"src/cache_{index}.py" for index in range(20)]
+        result = self.router.decide("fix bug in the local cache helper", files)
+        assert result.route == "deepseek"
+        assert result.risk == "medium"
+
+    def test_decide_blocks_more_than_forty_files(self):
+        files = [f"src/file_{index}.py" for index in range(41)]
+        result = self.router.decide("batch normalize these files", files)
+        assert result.route == "codex"
+        assert "40 files" in result.reason
 
     def test_decide_delegate_medium_readonly(self):
         result = self.router.decide("explain user service", ["src/user/service.py"])
@@ -128,3 +146,6 @@ class TestRouter:
         assert "docs" in DELEGATABLE
         assert "boilerplate" in DELEGATABLE
         assert "simple_refactor" in DELEGATABLE
+        assert "local_fix" in DELEGATABLE
+        assert "data_transform" in DELEGATABLE
+        assert "review_draft" in DELEGATABLE

@@ -66,6 +66,27 @@ class TestCodexSaverEngine:
         assert "decision" in result
         assert result["interaction"]["mode"] == "preview"
         assert "No external model call" in result["interaction"]["detail"]
+        assert result["task_preview"]["files"] == []
+
+    def test_delegate_task_caps_expanded_context_limits(self):
+        result = self.engine.delegate_task({
+            "instruction": "review this patch",
+            "files": [],
+            "max_files": 999,
+            "max_chars_per_file": 999_999,
+            "max_total_chars": 9_999_999,
+            "dry_run": True,
+        })
+        assert result["route"] == "deepseek"
+
+    def test_codex_approval_does_not_bypass_file_limit(self):
+        result = self.engine.delegate_task({
+            "instruction": "perform a bounded mechanical update",
+            "files": [f"src/file_{index}.py" for index in range(41)],
+            "codex_approved": True,
+            "dry_run": True,
+        })
+        assert result["route"] == "codex"
 
     def test_delegate_task_calls_deepseek(self):
         with patch("codexsaver.engine.ProviderClient") as MockClient:
@@ -236,11 +257,52 @@ class TestCodexSaverEngine:
         assert result["status"] == "dry_run"
         assert result["route"] == "deepseek"
         assert result["work_packet_preview"]["allowed_files"] == ["tests/test_utils.py"]
+        assert result["work_packet_preview"]["max_iterations"] == 4
+        assert result["work_packet_preview"]["max_diff_lines"] == 600
+        assert result["work_packet_preview"]["max_files"] == 20
+
+    def test_codex_can_approve_bounded_work_packet(self):
+        result = self.engine.delegate_work_packet({
+            "goal": "perform a bounded custom update",
+            "files": ["src/widget.py"],
+            "allowed_files": ["src/widget.py"],
+            "codex_approved": True,
+            "dry_run": True,
+        })
+        assert result["route"] == "deepseek"
+        assert result["work_packet_preview"]["codex_approved"] is True
+
+    def test_work_packet_limits_are_capped(self):
+        result = self.engine.delegate_work_packet({
+            "goal": "add unit tests for utils",
+            "files": ["tests/test_utils.py"],
+            "allowed_files": ["tests/test_utils.py"],
+            "max_iterations": 99,
+            "max_diff_lines": 9999,
+            "max_files": 999,
+            "max_total_chars": 9_999_999,
+            "dry_run": True,
+        })
+        preview = result["work_packet_preview"]
+        assert preview["max_iterations"] == 6
+        assert preview["max_diff_lines"] == 1000
+        assert preview["max_files"] == 40
+        assert preview["max_total_chars"] == 500_000
 
     def test_delegate_work_packet_routes_high_risk_to_codex(self):
         result = self.engine.delegate_work_packet({
             "goal": "fix security vulnerability",
             "files": ["src/auth/login.go"],
+        })
+        assert result["route"] == "codex"
+        assert result["status"] == "needs_codex"
+
+    def test_research_does_not_bypass_high_risk_protection(self):
+        result = self.engine.delegate_work_packet({
+            "goal": "inspect authentication secrets",
+            "files": ["src/auth/login.py"],
+            "delegation_level": "research",
+            "dry_run": True,
         })
         assert result["route"] == "codex"
         assert result["status"] == "needs_codex"

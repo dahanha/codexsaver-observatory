@@ -136,7 +136,7 @@
     let events = demoEvents.slice(); let selectedId = 0; let source = '示例数据'; let settings = null;
     const $ = id => document.getElementById(id);
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const labelTask = v => ({write_tests:'写测试',explain:'解释/总结',docs:'文档',code_search:'搜索/扫描',fix_lint:'Lint/类型检查',boilerplate:'模板/脚手架',simple_refactor:'简单重构',unknown:'未分类'}[v] || v || '未分类');
+    const labelTask = v => ({write_tests:'写测试',explain:'解释/总结',docs:'文档',code_search:'搜索/扫描',fix_lint:'Lint/类型检查',boilerplate:'模板/脚手架',simple_refactor:'简单重构',local_fix:'局部修复',data_transform:'数据转换',review_draft:'审查草稿',unknown:'未分类'}[v] || v || '未分类');
     const labelStatus = v => ({success:'成功',failed:'失败',needs_codex:'Codex 接管',dry_run:'预览'}[v] || v || '未知');
     const fmtTime = value => { const d = new Date(value); return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); };
     const visibleEvents = () => events.filter(e => (!$('routeFilter').value || $('routeFilter').value==='all' || e.route===$('routeFilter').value) && (!$('statusFilter').value || $('statusFilter').value==='all' || e.status===$('statusFilter').value) && (!$('taskFilter').value || $('taskFilter').value==='all' || e.task_type===$('taskFilter').value));

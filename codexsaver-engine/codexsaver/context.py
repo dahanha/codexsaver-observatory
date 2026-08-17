@@ -9,8 +9,8 @@ from .schema import FileContext
 class ContextPacker:
     """Loads bounded file context for DeepSeek."""
 
-    def __init__(self, max_files: int = 8, max_chars_per_file: int = 24_000,
-                 max_total_chars: int = 120_000, workspace: str = "."):
+    def __init__(self, max_files: int = 20, max_chars_per_file: int = 32_000,
+                 max_total_chars: int = 300_000, workspace: str = "."):
         self.max_files = max_files
         self.max_chars_per_file = max_chars_per_file
         self.max_total_chars = max_total_chars

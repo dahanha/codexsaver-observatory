@@ -150,8 +150,12 @@ def _run_subcommand(argv: list[str]) -> int:
     work_packet_parser.add_argument("--allowed-command", action="append", default=[])
     work_packet_parser.add_argument("--workspace", default=".")
     work_packet_parser.add_argument("--delegation-level", default="bounded_impl")
-    work_packet_parser.add_argument("--max-iterations", type=int, default=3)
-    work_packet_parser.add_argument("--max-diff-lines", type=int, default=300)
+    work_packet_parser.add_argument("--codex-approved", action="store_true")
+    work_packet_parser.add_argument("--max-iterations", type=int, default=4)
+    work_packet_parser.add_argument("--max-diff-lines", type=int, default=600)
+    work_packet_parser.add_argument("--max-files", type=int, default=20)
+    work_packet_parser.add_argument("--max-chars-per-file", type=int, default=32_000)
+    work_packet_parser.add_argument("--max-total-chars", type=int, default=300_000)
     work_packet_parser.add_argument("--dry-run", action="store_true")
 
     orchestrate_parser = subparsers.add_parser(
@@ -327,8 +331,12 @@ def _run_subcommand(argv: list[str]) -> int:
             "allowed_commands": args.allowed_command,
             "workspace": args.workspace,
             "delegation_level": args.delegation_level,
+            "codex_approved": args.codex_approved,
             "max_iterations": args.max_iterations,
             "max_diff_lines": args.max_diff_lines,
+            "max_files": args.max_files,
+            "max_chars_per_file": args.max_chars_per_file,
+            "max_total_chars": args.max_total_chars,
             "dry_run": args.dry_run,
         })
         print(json.dumps(result, ensure_ascii=False, indent=2))

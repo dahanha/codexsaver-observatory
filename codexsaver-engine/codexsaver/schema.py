@@ -30,6 +30,8 @@ TaskType = Literal[
     "docs",
     "boilerplate",
     "simple_refactor",
+    "local_fix",
+    "data_transform",
     "review_draft",
     "unknown",
 ]
@@ -51,9 +53,9 @@ class DelegateTaskInput:
     constraints: List[str]
     codex_approved: bool = False
     workspace: str = "."
-    max_files: int = 8
-    max_chars_per_file: int = 24_000
-    max_total_chars: int = 120_000
+    max_files: int = 20
+    max_chars_per_file: int = 32_000
+    max_total_chars: int = 300_000
     dry_run: bool = False
 
 
@@ -85,13 +87,14 @@ class WorkPacketInput:
     allowed_files: List[str]
     forbidden_paths: List[str]
     allowed_commands: List[str]
+    codex_approved: bool = False
     workspace: str = "."
     delegation_level: DelegationLevel = "bounded_impl"
-    max_iterations: int = 3
-    max_diff_lines: int = 300
-    max_files: int = 8
-    max_chars_per_file: int = 24_000
-    max_total_chars: int = 120_000
+    max_iterations: int = 4
+    max_diff_lines: int = 600
+    max_files: int = 20
+    max_chars_per_file: int = 32_000
+    max_total_chars: int = 300_000
     dry_run: bool = False
 
 

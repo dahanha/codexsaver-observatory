@@ -22,6 +22,11 @@ DEFAULT_CONSTRAINTS = [
     "If uncertain or risky, return status=needs_codex.",
 ]
 
+MAX_DELEGATED_FILES = 40
+MAX_CONTEXT_CHARS = 500_000
+MAX_WORK_PACKET_DIFF_LINES = 1_000
+MAX_WORK_PACKET_ITERATIONS = 6
+
 
 class CodexSaverEngine:
     def __init__(self):
@@ -39,14 +44,15 @@ class CodexSaverEngine:
             constraints=input_data.get("constraints", []),
             codex_approved=bool(input_data.get("codex_approved", False)),
             workspace=input_data.get("workspace", "."),
-            max_files=int(input_data.get("max_files", 8)),
-            max_chars_per_file=int(input_data.get("max_chars_per_file", 24_000)),
-            max_total_chars=int(input_data.get("max_total_chars", 120_000)),
+            max_files=max(1, min(int(input_data.get("max_files", 20)), MAX_DELEGATED_FILES)),
+            max_chars_per_file=max(1, min(int(input_data.get("max_chars_per_file", 32_000)), 64_000)),
+            max_total_chars=max(1, min(int(input_data.get("max_total_chars", 300_000)), MAX_CONTEXT_CHARS)),
             dry_run=bool(input_data.get("dry_run", False)),
         )
 
         decision = self.router.decide(req.instruction, req.files)
-        if req.codex_approved and decision.risk in {"low", "medium"} and not decision.protected_hits:
+        if (req.codex_approved and len(req.files) <= MAX_DELEGATED_FILES
+                and decision.risk in {"low", "medium"} and not decision.protected_hits):
             decision = RouteDecision(
                 route="deepseek",
                 task_type=decision.task_type,
@@ -242,7 +248,17 @@ class CodexSaverEngine:
         compression = load_compression_config()
         goal = input_data["goal"]
         files = input_data.get("files", [])
+        codex_approved = bool(input_data.get("codex_approved", False))
         decision = self.router.decide(goal, files)
+        if (codex_approved and len(files) <= MAX_DELEGATED_FILES
+                and decision.risk in {"low", "medium"} and not decision.protected_hits):
+            decision = RouteDecision(
+                route="deepseek",
+                task_type=decision.task_type,
+                risk=decision.risk,
+                reason="Codex explicitly approved this bounded work packet for delegation.",
+                protected_hits=[],
+            )
         if decision.route == "deepseek" and not is_deepseek_enabled():
             decision = RouteDecision(
                 route="codex",
@@ -253,7 +269,9 @@ class CodexSaverEngine:
             )
         decision_dict = to_dict(decision)
         delegation_reason = self._delegation_reason(decision_dict)
-        if decision.route == "codex" and input_data.get("delegation_level") not in {"research"}:
+        if (decision.route == "codex" and (
+                decision.risk == "high" or input_data.get("delegation_level") not in {"research"}
+        )):
             return {
                 "route": "codex",
                 "status": "needs_codex",
@@ -279,13 +297,14 @@ class CodexSaverEngine:
             allowed_files=input_data.get("allowed_files") or files,
             forbidden_paths=input_data.get("forbidden_paths") or DEFAULT_FORBIDDEN_PATHS,
             allowed_commands=input_data.get("allowed_commands", []),
+            codex_approved=codex_approved,
             workspace=input_data.get("workspace", "."),
             delegation_level=input_data.get("delegation_level", "bounded_impl"),
-            max_iterations=int(input_data.get("max_iterations", 3)),
-            max_diff_lines=int(input_data.get("max_diff_lines", 300)),
-            max_files=int(input_data.get("max_files", 8)),
-            max_chars_per_file=int(input_data.get("max_chars_per_file", 24_000)),
-            max_total_chars=int(input_data.get("max_total_chars", 120_000)),
+            max_iterations=max(1, min(int(input_data.get("max_iterations", 4)), MAX_WORK_PACKET_ITERATIONS)),
+            max_diff_lines=max(1, min(int(input_data.get("max_diff_lines", 600)), MAX_WORK_PACKET_DIFF_LINES)),
+            max_files=max(1, min(int(input_data.get("max_files", 20)), MAX_DELEGATED_FILES)),
+            max_chars_per_file=max(1, min(int(input_data.get("max_chars_per_file", 32_000)), 64_000)),
+            max_total_chars=max(1, min(int(input_data.get("max_total_chars", 300_000)), MAX_CONTEXT_CHARS)),
             dry_run=bool(input_data.get("dry_run", False)),
         )
 

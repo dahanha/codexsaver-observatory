@@ -24,9 +24,9 @@ def delegate_task_schema() -> Dict[str, Any]:
     return {
         "name": "delegate_task",
         "description": (
-            "Delegate low-risk coding tasks to a configured low-cost LLM provider to reduce Codex cost. "
-            "Use for tests, docs, code search, explanations, lint fixes, boilerplate, "
-            "and small refactors. Do not use for high-risk architecture/security/payment/migration tasks."
+            "Delegate bounded low/medium-risk work to DeepSeek. Use for tests, docs, searches, "
+            "explanations, review drafts, lint fixes, boilerplate, local bug fixes, structured data "
+            "transformations, and repetitive changes of up to 40 files. Protected or high-risk work stays in Codex."
         ),
         "inputSchema": {
             "type": "object",
@@ -41,10 +41,12 @@ def delegate_task_schema() -> Dict[str, Any]:
                 "workspace": {"type": "string",
                               "description": "Workspace root used to resolve relative file paths and run verification commands."},
                 "max_files": {"type": "integer", "minimum": 1,
-                              "description": "Maximum number of files to include in delegated context."},
+                              "maximum": 40, "default": 20,
+                              "description": "Maximum files in delegated context (hard limit 40)."},
                 "max_chars_per_file": {"type": "integer", "minimum": 1,
                                        "description": "Maximum characters loaded per file."},
                 "max_total_chars": {"type": "integer", "minimum": 1,
+                                    "maximum": 500000, "default": 300000,
                                     "description": "Maximum total characters loaded across all files."},
                 "dry_run": {"type": "boolean",
                             "description": "If true, only show routing decision and task preview."}
@@ -78,11 +80,16 @@ def delegate_work_packet_schema() -> Dict[str, Any]:
                 "constraints": {"type": "array", "items": {"type": "string"}},
                 "allowed_commands": {"type": "array", "items": {"type": "string"},
                                      "description": "Exact commands the worker may run in the sandbox."},
+                "codex_approved": {"type": "boolean",
+                                   "description": "Allow Codex to approve a bounded low/medium-risk work packet. Protected and high-risk work remains blocked."},
                 "workspace": {"type": "string"},
                 "delegation_level": {"type": "string",
                                      "enum": ["research", "draft_patch", "bounded_impl", "repair_loop"]},
-                "max_iterations": {"type": "integer", "minimum": 1, "maximum": 5},
-                "max_diff_lines": {"type": "integer", "minimum": 1},
+                "max_iterations": {"type": "integer", "minimum": 1, "maximum": 6, "default": 4},
+                "max_diff_lines": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 600},
+                "max_files": {"type": "integer", "minimum": 1, "maximum": 40, "default": 20},
+                "max_chars_per_file": {"type": "integer", "minimum": 1, "maximum": 64000, "default": 32000},
+                "max_total_chars": {"type": "integer", "minimum": 1, "maximum": 500000, "default": 300000},
                 "dry_run": {"type": "boolean"}
             },
             "required": ["goal"]
