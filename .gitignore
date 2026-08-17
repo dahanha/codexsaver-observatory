@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.venv/
+.vs/
+events.jsonl
+*.log
+*-preview.png
